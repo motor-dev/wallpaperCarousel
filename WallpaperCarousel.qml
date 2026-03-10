@@ -11,44 +11,6 @@ import qs.Modules.Plugins
 PluginComponent {
     id: root
 
-    property var popoutService: null
-
-    // -------------------------------------------------------------------------
-    // BAR WIDGET — pill shown in the DankBar; click to toggle the carousel
-    // -------------------------------------------------------------------------
-    horizontalBarPill: Component {
-        Item {
-            implicitWidth: hpIcon.width
-            implicitHeight: hpIcon.height
-            DankIcon {
-                id: hpIcon
-                anchors.centerIn: parent
-                name: "wallpaper"
-                size: root.iconSize
-                color: overlay.shown ? Theme.primary : Theme.surfaceText
-            }
-        }
-    }
-
-    verticalBarPill: Component {
-        Item {
-            readonly property real _pad: (root.barConfig?.removeWidgetPadding ?? false) ? 0 : ((root.barConfig?.widgetPadding ?? 12) * (root.widgetThickness / 30))
-            implicitWidth: vpIcon.width
-            implicitHeight: Math.max(1, root.widgetThickness - _pad * 2)
-            DankIcon {
-                id: vpIcon
-                anchors.centerIn: parent
-                name: "wallpaper"
-                size: root.iconSize
-                color: overlay.shown ? Theme.primary : Theme.surfaceText
-            }
-        }
-    }
-
-    pillClickAction: (x, y, width, section, screen) => {
-        root.toggle();
-    }
-
     // -------------------------------------------------------------------------
     // WALLPAPER FOLDER — derived from the current DMS wallpaper path
     // -------------------------------------------------------------------------
