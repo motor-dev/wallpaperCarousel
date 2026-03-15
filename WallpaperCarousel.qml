@@ -12,9 +12,14 @@ PluginComponent {
     id: root
 
     // -------------------------------------------------------------------------
-    // WALLPAPER FOLDER — derived from the current DMS wallpaper path
+    // WALLPAPER FOLDER — uses the override directory if set, otherwise
+    // derived from the current DMS wallpaper path
     // -------------------------------------------------------------------------
+    readonly property string _overrideDir: (pluginData && pluginData.wallpaperDirectory) || ""
+
     readonly property string wallpaperFolder: {
+        if (_overrideDir)
+            return _overrideDir;
         const p = SessionData.wallpaperPath;
         if (!p || p.startsWith("#"))
             return Paths.strip(Paths.pictures);
@@ -402,6 +407,37 @@ PluginComponent {
                         }
                     }
                 }
+            }
+        }
+
+        // Invalid directory message (override set but folder model never loads)
+        Column {
+            anchors.centerIn: parent
+            spacing: 12
+            visible: overlay.visible && root._overrideDir && folderModel.status !== FolderListModel.Ready
+
+            Text {
+                anchors.horizontalCenter: parent.horizontalCenter
+                text: "Directory not found"
+                font.pixelSize: 24
+                font.bold: true
+                color: "white"
+            }
+
+            Text {
+                anchors.horizontalCenter: parent.horizontalCenter
+                text: "The configured directory '" + root._overrideDir + "' does not exist.\nCheck the path in Wallpaper Carousel settings."
+                font.pixelSize: 14
+                color: "#BBBBBB"
+                horizontalAlignment: Text.AlignHCenter
+                lineHeight: 1.4
+            }
+
+            Text {
+                anchors.horizontalCenter: parent.horizontalCenter
+                text: "Press Escape to close"
+                font.pixelSize: 12
+                color: "#888888"
             }
         }
 
