@@ -11,4 +11,16 @@ PluginSettings {
         placeholder: "/home/user/Pictures/Wallpapers"
         defaultValue: ""
     }
+
+    SelectionSetting {
+        settingKey: "carouselMode"
+        label: "Carousel Mode"
+        description: "Standard stops at the edges. Wrap loops the index. Infinite shows a seamless repeating view."
+        defaultValue: "wrap"
+        options: [
+            { label: "Standard", value: "standard" },
+            { label: "Wrap", value: "wrap" },
+            { label: "Infinite", value: "infinite" }
+        ]
+    }
 }

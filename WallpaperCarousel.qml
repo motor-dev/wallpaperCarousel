@@ -11,11 +11,14 @@ import qs.Modules.Plugins
 PluginComponent {
     id: root
 
-    // -------------------------------------------------------------------------
-    // WALLPAPER FOLDER — uses the override directory if set, otherwise
-    // derived from the current DMS wallpaper path
-    // -------------------------------------------------------------------------
     readonly property string _overrideDir: (pluginData && pluginData.wallpaperDirectory) || ""
+    readonly property string _carouselMode: (pluginData && pluginData.carouselMode) || "wrap"
+    readonly property bool _isInfinite: _carouselMode === "infinite"
+    readonly property bool _wrapsIndex: _carouselMode !== "standard"
+    on_CarouselModeChanged: if (_initialSyncDone) Qt.callLater(_syncStableModel)
+
+    // Unified access to whichever view is active
+    readonly property var _currentView: _isInfinite ? pathView : listView
 
     readonly property string wallpaperFolder: {
         if (_overrideDir)
@@ -64,7 +67,8 @@ PluginComponent {
     }
 
     function _syncStableModel() {
-        const savedIndex = view.currentIndex;
+        const activeView = root._currentView;
+        const savedIndex = activeView.currentIndex;
         const savedFile = (savedIndex >= 0 && savedIndex < stableModel.count)
             ? stableModel.get(savedIndex).fileName : "";
 
@@ -76,10 +80,27 @@ PluginComponent {
             });
         }
 
+        // When looping, duplicate entries so PathView has enough items
+        // to fill the entire viewport and look truly infinite.
+        if (root._isInfinite && folderModel.count > 0) {
+            const viewWidth = pathView.width > 0 ? pathView.width : 2560;
+            const minCount = Math.ceil(viewWidth / carousel.itemWidth) + 6;
+            const baseCount = folderModel.count;
+            const targetCount = baseCount * Math.ceil(minCount / baseCount);
+            while (stableModel.count < targetCount) {
+                for (let i = 0; i < baseCount && stableModel.count < targetCount; i++) {
+                    stableModel.append({
+                        fileName: folderModel.get(i, "fileName"),
+                        fileUrl: folderModel.get(i, "fileUrl").toString()
+                    });
+                }
+            }
+        }
+
         if (savedFile) {
             for (let i = 0; i < stableModel.count; i++) {
                 if (stableModel.get(i).fileName === savedFile) {
-                    view.currentIndex = i;
+                    activeView.currentIndex = i;
                     break;
                 }
             }
@@ -103,8 +124,8 @@ PluginComponent {
             overlay.screen = focusedScreen;
         overlay.visible = true;
         carousel.tryFocus();
-        view.forceActiveFocus();
-        Qt.callLater(() => view.forceActiveFocus());
+        root._currentView.forceActiveFocus();
+        Qt.callLater(() => root._currentView.forceActiveFocus());
     }
 
     function close() {
@@ -112,17 +133,18 @@ PluginComponent {
     }
 
     function cycle(direction: int): string {
+        const v = root._currentView;
         if (!overlay.visible) {
             open();
-            return "opened:" + view.currentIndex;
+            return "opened:" + v.currentIndex;
         }
 
         if (direction > 0)
-            view.incrementCurrentIndex();
+            v.incrementCurrentIndex();
         else
-            view.decrementCurrentIndex();
+            v.decrementCurrentIndex();
 
-        return "index:" + view.currentIndex;
+        return "index:" + v.currentIndex;
     }
 
     // -------------------------------------------------------------------------
@@ -222,14 +244,17 @@ PluginComponent {
                     }
                 }
 
-                if (view.count > targetIndex) {
-                    view.currentIndex = targetIndex;
-                    view.positionViewAtIndex(targetIndex, ListView.Center);
+                const v = root._currentView;
+                if (v.count > targetIndex) {
+                    v.currentIndex = targetIndex;
+                    if (!root._isInfinite)
+                        v.positionViewAtIndex(targetIndex, ListView.Center);
                     initialFocusSet = true;
-                } else if (view.count > 0) {
-                    const safeIndex = Math.min(targetIndex, view.count - 1);
-                    view.currentIndex = safeIndex;
-                    view.positionViewAtIndex(safeIndex, ListView.Center);
+                } else if (v.count > 0) {
+                    const safeIndex = Math.min(targetIndex, v.count - 1);
+                    v.currentIndex = safeIndex;
+                    if (!root._isInfinite)
+                        v.positionViewAtIndex(safeIndex, ListView.Center);
                     initialFocusSet = true;
                 }
             }
@@ -238,6 +263,7 @@ PluginComponent {
             readonly property int itemHeight: 420
             readonly property int borderWidth: 3
             readonly property real skewFactor: -0.35
+            readonly property int _baseWallpaperCount: folderModel.count
 
             property int confirmingIndex: -1
 
@@ -261,58 +287,71 @@ PluginComponent {
                 }
             }
 
-            ListView {
-                id: view
-                anchors.fill: parent
+            // -----------------------------------------------------------------
+            // Shared delegate component used by both views
+            // -----------------------------------------------------------------
+            Component {
+                id: carouselDelegate
 
-                spacing: 0
-                orientation: ListView.Horizontal
-                clip: false
-
-                cacheBuffer: 5000
-
-                highlightRangeMode: ListView.StrictlyEnforceRange
-                preferredHighlightBegin: (width / 2) - (carousel.itemWidth / 2)
-                preferredHighlightEnd:   (width / 2) + (carousel.itemWidth / 2)
-
-                highlightMoveDuration: carousel.initialFocusSet ? 150 : 0
-
-                focus: overlay.visible
-                activeFocusOnTab: true
-
-                Keys.onPressed: event => {
-                    if (carousel.confirmingIndex >= 0) {
-                        event.accepted = true;
-                        return;
-                    }
-                    if (event.key === Qt.Key_Escape) {
-                        root.close();
-                        event.accepted = true;
-                    } else if (event.key === Qt.Key_Left) {
-                        decrementCurrentIndex();
-                        event.accepted = true;
-                    } else if (event.key === Qt.Key_Right) {
-                        incrementCurrentIndex();
-                        event.accepted = true;
-                    } else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
-                        if (currentItem)
-                            currentItem.pickWallpaper();
-                        event.accepted = true;
-                    }
-                }
-
-                onCountChanged: carousel.tryFocus()
-
-                model: stableModel
-
-                delegate: Item {
+                Item {
                     id: delegateRoot
                     width: carousel.itemWidth
                     height: carousel.itemHeight
-                    anchors.verticalCenter: parent.verticalCenter
 
-                    readonly property bool isCurrent: ListView.isCurrentItem
-                    readonly property int distFromCenter: Math.abs(index - view.currentIndex)
+                    // In a horizontal ListView the delegate is not
+                    // vertically centered by default; anchor it.
+                    // PathView overrides x/y via the path so the
+                    // anchor is harmlessly ignored in that mode.
+                    anchors.verticalCenter: parent ? parent.verticalCenter : undefined
+
+                    required property int index
+                    required property string fileName
+                    required property string fileUrl
+
+                    readonly property bool isCurrent: root._isInfinite
+                        ? PathView.isCurrentItem
+                        : ListView.isCurrentItem
+
+                    // Wrap-aware distance from the highlighted item.
+                    readonly property int distFromCenter: {
+                        if (root._isInfinite) {
+                            const n = stableModel.count;
+                            if (n <= 1) return 0;
+                            const d = Math.abs(index - pathView.currentIndex);
+                            return Math.min(d, n - d);
+                        }
+                        return Math.abs(index - listView.currentIndex);
+                    }
+
+                    // 1/(1+sq(d)) falloff — identical curve for both views
+                    readonly property real falloff: 1.0 / (1.0 + distFromCenter * distFromCenter)
+
+                    // When looping with duplicated entries, only show
+                    // Y unique tiles: floor(Y/2) to the left of the
+                    // current wallpaper and floor((Y-1)/2) to the right.
+                    // For each visible slot, compute the exact model index
+                    // that should occupy it (direction-aware).
+                    readonly property real _dupeFade: {
+                        if (!root._isInfinite) return 1.0;
+                        const base = carousel._baseWallpaperCount;
+                        if (base <= 0 || base >= stableModel.count) return 1.0;
+                        const n = stableModel.count;
+                        const cur = pathView.currentIndex;
+                        const wpOffset = ((index % base) - (cur % base) + base) % base;
+                        const leftCount  = Math.floor(base / 2);
+                        const rightCount = Math.floor((base - 1) / 2);
+
+                        let target;
+                        if (wpOffset === 0)
+                            target = cur;
+                        else if (wpOffset <= rightCount)
+                            target = (cur + wpOffset) % n;
+                        else if (base - wpOffset <= leftCount)
+                            target = (cur - (base - wpOffset) + n) % n;
+                        else
+                            return 0.0;
+                        return index === target ? 1.0 : 0.0;
+                    }
 
                     z: carousel.confirmingIndex === index ? 100
                        : isCurrent ? 10 : Math.max(1, 10 - distFromCenter)
@@ -337,21 +376,18 @@ PluginComponent {
                         width: parent.width
                         height: parent.height
 
-                        // Non-linear falloff: center = 1.15, neighbors shrink and fade
-                        // using 1/(1+d²) curve for a gentle rolloff
-                        readonly property real falloff: 1.0 / (1.0 + delegateRoot.distFromCenter * delegateRoot.distFromCenter)
-                        readonly property bool isConfirmed: carousel.confirmingIndex === index
+                        readonly property bool isConfirmed: carousel.confirmingIndex === delegateRoot.index
                         readonly property bool isOtherConfirming: carousel.confirmingIndex >= 0 && !isConfirmed
                         readonly property bool isHovered: delegateMouseArea.containsMouse && carousel.confirmingIndex < 0
 
                         scale: isConfirmed ? 1.6
-                             : isOtherConfirming ? (0.75 + 0.40 * falloff) * 0.8
-                             : isHovered ? 0.75 + 0.60 * falloff
-                             : 0.75 + 0.40 * falloff
-                        opacity: isConfirmed ? 0.0
+                             : isOtherConfirming ? (0.75 + 0.40 * delegateRoot.falloff) * 0.8
+                             : isHovered ? 0.75 + 0.60 * delegateRoot.falloff
+                             : 0.75 + 0.40 * delegateRoot.falloff
+                        opacity: (isConfirmed ? 0.0
                                : isOtherConfirming ? 0.0
                                : isHovered ? 1.0
-                               : 0.25 + 0.75 * falloff
+                               : 0.1 + 0.9 * delegateRoot.falloff) * delegateRoot._dupeFade
                         layer.enabled: opacity < 1
 
                         Behavior on scale   { NumberAnimation { duration: 300; easing.type: Easing.OutBack } }
@@ -368,7 +404,7 @@ PluginComponent {
                         // Outer skewed border image
                         Image {
                             anchors.fill: parent
-                            source: fileUrl
+                            source: delegateRoot.fileUrl
                             sourceSize: Qt.size(carousel.itemWidth, carousel.itemHeight)
                             fillMode: Image.Stretch
                             asynchronous: true
@@ -392,7 +428,7 @@ PluginComponent {
                                 height: parent.height
 
                                 fillMode: Image.PreserveAspectCrop
-                                source: fileUrl
+                                source: delegateRoot.fileUrl
                                 sourceSize: Qt.size(carousel.itemWidth, carousel.itemHeight)
                                 asynchronous: true
 
@@ -407,6 +443,129 @@ PluginComponent {
                         }
                     }
                 }
+            }
+
+            // -----------------------------------------------------------------
+            // PathView — looping
+            // -----------------------------------------------------------------
+            PathView {
+                id: pathView
+                anchors.fill: parent
+                visible: root._isInfinite
+
+                model: root._isInfinite ? stableModel : null
+                delegate: carouselDelegate
+
+                pathItemCount: Math.max(1, Math.min(stableModel.count,
+                    Math.ceil(width / carousel.itemWidth) + 4))
+                cacheItemCount: 4
+
+                preferredHighlightBegin: 0.5
+                preferredHighlightEnd: 0.5
+                highlightRangeMode: PathView.StrictlyEnforceRange
+
+                highlightMoveDuration: carousel.initialFocusSet ? 150 : 0
+                movementDirection: PathView.Shortest
+
+                focus: root._isInfinite && overlay.visible
+
+                Keys.onPressed: event => {
+                    if (carousel.confirmingIndex >= 0) {
+                        event.accepted = true;
+                        return;
+                    }
+                    if (event.key === Qt.Key_Escape) {
+                        root.close();
+                        event.accepted = true;
+                    } else if (event.key === Qt.Key_Left) {
+                        decrementCurrentIndex();
+                        event.accepted = true;
+                    } else if (event.key === Qt.Key_Right) {
+                        incrementCurrentIndex();
+                        event.accepted = true;
+                    } else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
+                        if (currentItem)
+                            currentItem.pickWallpaper();
+                        event.accepted = true;
+                    }
+                }
+
+                onCountChanged: carousel.tryFocus()
+
+                // Horizontal line through the vertical centre of the view.
+                // Length = pathItemCount * itemWidth so items are always
+                // spaced exactly one itemWidth apart regardless of how
+                // many are on screen.
+                readonly property real _pathLen: pathItemCount * carousel.itemWidth
+                readonly property real _pathX0: (width - _pathLen) / 2
+                path: Path {
+                    startX: pathView._pathX0
+                    startY: pathView.height / 2 - carousel.itemHeight / 2
+                    PathLine {
+                        x: pathView._pathX0 + pathView._pathLen
+                        y: pathView.height / 2 - carousel.itemHeight / 2
+                    }
+                }
+            }
+
+            // -----------------------------------------------------------------
+            // ListView — index is looping, but not visuals
+            // -----------------------------------------------------------------
+            ListView {
+                id: listView
+                anchors.fill: parent
+                visible: !root._isInfinite
+
+                model: root._isInfinite ? null : stableModel
+                delegate: carouselDelegate
+
+                spacing: 0
+                orientation: ListView.Horizontal
+                clip: false
+                cacheBuffer: 5000
+
+                highlightRangeMode: ListView.StrictlyEnforceRange
+                preferredHighlightBegin: (width / 2) - (carousel.itemWidth / 2)
+                preferredHighlightEnd:   (width / 2) + (carousel.itemWidth / 2)
+
+                highlightMoveDuration: carousel.initialFocusSet ? 150 : 0
+
+                focus: !root._isInfinite && overlay.visible
+
+                Keys.onPressed: event => {
+                    if (carousel.confirmingIndex >= 0) {
+                        event.accepted = true;
+                        return;
+                    }
+                    if (event.key === Qt.Key_Escape) {
+                        root.close();
+                        event.accepted = true;
+                    } else if (event.key === Qt.Key_Left) {
+                        if (currentIndex > 0)
+                            decrementCurrentIndex();
+                        else if (root._wrapsIndex)
+                            currentIndex = count - 1;
+                        event.accepted = true;
+                    } else if (event.key === Qt.Key_Right) {
+                        if (currentIndex < count - 1)
+                            incrementCurrentIndex();
+                        else if (root._wrapsIndex)
+                            currentIndex = 0;
+                        event.accepted = true;
+                    } else if (event.key === Qt.Key_Home) {
+                        currentIndex = 0;
+                        event.accepted = true;
+                    } else if (event.key === Qt.Key_End) {
+                        currentIndex = count - 1;
+                        event.accepted = true;
+                    } else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
+                        if (currentItem)
+                            currentItem.pickWallpaper();
+                        event.accepted = true;
+                    }
+                }
+
+                onCountChanged: carousel.tryFocus()
             }
         }
 
