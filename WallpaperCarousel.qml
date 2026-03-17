@@ -477,10 +477,10 @@ PluginComponent {
                     if (event.key === Qt.Key_Escape) {
                         root.close();
                         event.accepted = true;
-                    } else if (event.key === Qt.Key_Left) {
+                    } else if (event.key === Qt.Key_Left|| event.key === Qt.Key_H) {
                         decrementCurrentIndex();
                         event.accepted = true;
-                    } else if (event.key === Qt.Key_Right) {
+                    } else if (event.key === Qt.Key_Right|| event.key === Qt.Key_L) {
                         incrementCurrentIndex();
                         event.accepted = true;
                     } else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
@@ -540,13 +540,13 @@ PluginComponent {
                     if (event.key === Qt.Key_Escape) {
                         root.close();
                         event.accepted = true;
-                    } else if (event.key === Qt.Key_Left) {
+                    } else if (event.key === Qt.Key_Left|| event.key === Qt.Key_H) {
                         if (currentIndex > 0)
                             decrementCurrentIndex();
                         else if (root._wrapsIndex)
                             currentIndex = count - 1;
                         event.accepted = true;
-                    } else if (event.key === Qt.Key_Right) {
+                    } else if (event.key === Qt.Key_Right|| event.key === Qt.Key_L) {
                         if (currentIndex < count - 1)
                             incrementCurrentIndex();
                         else if (root._wrapsIndex)
