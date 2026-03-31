@@ -15,7 +15,8 @@ PluginComponent {
     readonly property string _carouselMode: (pluginData && pluginData.carouselMode) || "wrap"
     readonly property bool _isInfinite: _carouselMode === "infinite"
     readonly property bool _wrapsIndex: _carouselMode !== "standard"
-    on_CarouselModeChanged: if (_initialSyncDone) Qt.callLater(_syncStableModel)
+    on_CarouselModeChanged: if (_initialSyncDone)
+        Qt.callLater(_syncStableModel)
 
     // Unified access to whichever view is active
     readonly property var _currentView: _isInfinite ? pathView : listView
@@ -38,7 +39,9 @@ PluginComponent {
     // -------------------------------------------------------------------------
     property bool _initialSyncDone: false
 
-    ListModel { id: stableModel }
+    ListModel {
+        id: stableModel
+    }
 
     Timer {
         id: modelSyncTimer
@@ -49,8 +52,7 @@ PluginComponent {
     FolderListModel {
         id: folderModel
         folder: root.wallpaperFolderUrl
-        nameFilters: ["*.jpg", "*.jpeg", "*.png", "*.webp", "*.gif",
-                      "*.bmp", "*.jxl", "*.avif", "*.heif", "*.exr"]
+        nameFilters: ["*.jpg", "*.jpeg", "*.png", "*.webp", "*.gif", "*.bmp", "*.jxl", "*.avif", "*.heif", "*.exr"]
         showDirs: false
         sortField: FolderListModel.Name
 
@@ -69,8 +71,7 @@ PluginComponent {
     function _syncStableModel() {
         const activeView = root._currentView;
         const savedIndex = activeView.currentIndex;
-        const savedFile = (savedIndex >= 0 && savedIndex < stableModel.count)
-            ? stableModel.get(savedIndex).fileName : "";
+        const savedFile = (savedIndex >= 0 && savedIndex < stableModel.count) ? stableModel.get(savedIndex).fileName : "";
 
         stableModel.clear();
         for (let i = 0; i < folderModel.count; i++) {
@@ -177,8 +178,12 @@ PluginComponent {
             return "closed";
         }
 
-        function cycleNext(): string  { return root.cycle(+1); }
-        function cyclePrevious(): string { return root.cycle(-1); }
+        function cycleNext(): string {
+            return root.cycle(+1);
+        }
+        function cyclePrevious(): string {
+            return root.cycle(-1);
+        }
     }
 
     // -------------------------------------------------------------------------
@@ -204,8 +209,12 @@ PluginComponent {
         Rectangle {
             anchors.fill: parent
             color: "#CC000000"
-            opacity: overlay.visible ? 1 : 0
-            Behavior on opacity { NumberAnimation { duration: 150 } }
+            opacity: overlay.visible ? carousel.overlayOpacity / 100 : 0
+            Behavior on opacity {
+                NumberAnimation {
+                    duration: 150
+                }
+            }
         }
 
         // Click background to close
@@ -222,7 +231,11 @@ PluginComponent {
             id: carousel
             anchors.fill: parent
             opacity: overlay.visible ? 1 : 0
-            Behavior on opacity { NumberAnimation { duration: 150 } }
+            Behavior on opacity {
+                NumberAnimation {
+                    duration: 150
+                }
+            }
 
             property bool initialFocusSet: false
 
@@ -231,9 +244,7 @@ PluginComponent {
                     return;
 
                 let targetIndex = 0;
-                const wp = (SessionData.perMonitorWallpaper && overlay.screen)
-                           ? SessionData.getMonitorWallpaper(overlay.screen.name)
-                           : SessionData.wallpaperPath;
+                const wp = (SessionData.perMonitorWallpaper && overlay.screen) ? SessionData.getMonitorWallpaper(overlay.screen.name) : SessionData.wallpaperPath;
                 const currentFile = (wp || "").split('/').pop();
                 if (currentFile && stableModel.count > 0) {
                     for (let i = 0; i < stableModel.count; i++) {
@@ -259,9 +270,11 @@ PluginComponent {
                 }
             }
 
-            readonly property int itemWidth: 300
-            readonly property int itemHeight: 420
-            readonly property int borderWidth: 3
+            readonly property int itemWidth: parseInt(pluginData && pluginData.itemWidth) || 300
+            readonly property int itemHeight: parseInt(pluginData && pluginData.itemHeight) || 420
+            readonly property int borderWidth: (pluginData && pluginData.borderWidth) || 3
+            readonly property real selectedScale: parseFloat(pluginData && pluginData.selectedScale) || 1.15
+            readonly property int overlayOpacity: (pluginData && pluginData.overlayOpacity) || 80
             readonly property real skewFactor: -0.35
             readonly property int _baseWallpaperCount: folderModel.count
 
@@ -308,15 +321,14 @@ PluginComponent {
                     required property string fileName
                     required property string fileUrl
 
-                    readonly property bool isCurrent: root._isInfinite
-                        ? PathView.isCurrentItem
-                        : ListView.isCurrentItem
+                    readonly property bool isCurrent: root._isInfinite ? PathView.isCurrentItem : ListView.isCurrentItem
 
                     // Wrap-aware distance from the highlighted item.
                     readonly property int distFromCenter: {
                         if (root._isInfinite) {
                             const n = stableModel.count;
-                            if (n <= 1) return 0;
+                            if (n <= 1)
+                                return 0;
                             const d = Math.abs(index - pathView.currentIndex);
                             return Math.min(d, n - d);
                         }
@@ -332,13 +344,15 @@ PluginComponent {
                     // For each visible slot, compute the exact model index
                     // that should occupy it (direction-aware).
                     readonly property real _dupeFade: {
-                        if (!root._isInfinite) return 1.0;
+                        if (!root._isInfinite)
+                            return 1.0;
                         const base = carousel._baseWallpaperCount;
-                        if (base <= 0 || base >= stableModel.count) return 1.0;
+                        if (base <= 0 || base >= stableModel.count)
+                            return 1.0;
                         const n = stableModel.count;
                         const cur = pathView.currentIndex;
                         const wpOffset = ((index % base) - (cur % base) + base) % base;
-                        const leftCount  = Math.floor(base / 2);
+                        const leftCount = Math.floor(base / 2);
                         const rightCount = Math.floor((base - 1) / 2);
 
                         let target;
@@ -353,11 +367,11 @@ PluginComponent {
                         return index === target ? 1.0 : 0.0;
                     }
 
-                    z: carousel.confirmingIndex === index ? 100
-                       : isCurrent ? 10 : Math.max(1, 10 - distFromCenter)
+                    z: carousel.confirmingIndex === index ? 100 : isCurrent ? 10 : Math.max(1, 10 - distFromCenter)
 
                     function pickWallpaper() {
-                        if (carousel.confirmingIndex >= 0) return;
+                        if (carousel.confirmingIndex >= 0)
+                            return;
                         const fullPath = root.wallpaperFolder + "/" + fileName;
                         carousel.confirmPick(index, fullPath);
                     }
@@ -380,25 +394,28 @@ PluginComponent {
                         readonly property bool isOtherConfirming: carousel.confirmingIndex >= 0 && !isConfirmed
                         readonly property bool isHovered: delegateMouseArea.containsMouse && carousel.confirmingIndex < 0
 
-                        scale: isConfirmed ? 1.6
-                             : isOtherConfirming ? (0.75 + 0.40 * delegateRoot.falloff) * 0.8
-                             : isHovered ? 0.75 + 0.60 * delegateRoot.falloff
-                             : 0.75 + 0.40 * delegateRoot.falloff
-                        opacity: (isConfirmed ? 0.0
-                               : isOtherConfirming ? 0.0
-                               : isHovered ? 1.0
-                               : 0.1 + 0.9 * delegateRoot.falloff) * delegateRoot._dupeFade
+                        readonly property real baseScale: 0.75
+                        readonly property real scaleRange: carousel.selectedScale - 0.75
+
+                        scale: isConfirmed ? 1.6 : isOtherConfirming ? (baseScale + scaleRange * delegateRoot.falloff) * 0.8 : isHovered ? baseScale + (scaleRange + 0.20) * delegateRoot.falloff : baseScale + scaleRange * delegateRoot.falloff
+                        opacity: (isConfirmed ? 0.0 : isOtherConfirming ? 0.0 : isHovered ? 1.0 : 0.1 + 0.9 * delegateRoot.falloff) * delegateRoot._dupeFade
                         layer.enabled: opacity < 1
 
-                        Behavior on scale   { NumberAnimation { duration: 300; easing.type: Easing.OutBack } }
-                        Behavior on opacity { NumberAnimation { duration: 300 } }
+                        Behavior on scale {
+                            NumberAnimation {
+                                duration: 300
+                                easing.type: Easing.OutBack
+                            }
+                        }
+                        Behavior on opacity {
+                            NumberAnimation {
+                                duration: 300
+                            }
+                        }
 
                         transform: Matrix4x4 {
                             property real s: carousel.skewFactor
-                            matrix: Qt.matrix4x4(1, s, 0, 0,
-                                                 0, 1, 0, 0,
-                                                 0, 0, 1, 0,
-                                                 0, 0, 0, 1)
+                            matrix: Qt.matrix4x4(1, s, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1)
                         }
 
                         // Outer skewed border image
@@ -416,7 +433,10 @@ PluginComponent {
                             anchors.margins: carousel.borderWidth
                             visible: innerImage.status === Image.Ready
 
-                            Rectangle { anchors.fill: parent; color: "black" }
+                            Rectangle {
+                                anchors.fill: parent
+                                color: "black"
+                            }
                             clip: true
 
                             Image {
@@ -434,10 +454,7 @@ PluginComponent {
 
                                 transform: Matrix4x4 {
                                     property real s: -carousel.skewFactor
-                                    matrix: Qt.matrix4x4(1, s, 0, 0,
-                                                         0, 1, 0, 0,
-                                                         0, 0, 1, 0,
-                                                         0, 0, 0, 1)
+                                    matrix: Qt.matrix4x4(1, s, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1)
                                 }
                             }
                         }
@@ -456,8 +473,7 @@ PluginComponent {
                 model: root._isInfinite ? stableModel : null
                 delegate: carouselDelegate
 
-                pathItemCount: Math.max(1, Math.min(stableModel.count,
-                    Math.ceil(width / carousel.itemWidth) + 4))
+                pathItemCount: Math.max(1, Math.min(stableModel.count, Math.ceil(width / carousel.itemWidth) + 4))
                 cacheItemCount: 4
 
                 preferredHighlightBegin: 0.5
@@ -477,10 +493,10 @@ PluginComponent {
                     if (event.key === Qt.Key_Escape) {
                         root.close();
                         event.accepted = true;
-                    } else if (event.key === Qt.Key_Left|| event.key === Qt.Key_H) {
+                    } else if (event.key === Qt.Key_Left || event.key === Qt.Key_H) {
                         decrementCurrentIndex();
                         event.accepted = true;
-                    } else if (event.key === Qt.Key_Right|| event.key === Qt.Key_L) {
+                    } else if (event.key === Qt.Key_Right || event.key === Qt.Key_L) {
                         incrementCurrentIndex();
                         event.accepted = true;
                     } else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
@@ -526,7 +542,7 @@ PluginComponent {
 
                 highlightRangeMode: ListView.StrictlyEnforceRange
                 preferredHighlightBegin: (width / 2) - (carousel.itemWidth / 2)
-                preferredHighlightEnd:   (width / 2) + (carousel.itemWidth / 2)
+                preferredHighlightEnd: (width / 2) + (carousel.itemWidth / 2)
 
                 highlightMoveDuration: carousel.initialFocusSet ? 150 : 0
 
@@ -540,13 +556,13 @@ PluginComponent {
                     if (event.key === Qt.Key_Escape) {
                         root.close();
                         event.accepted = true;
-                    } else if (event.key === Qt.Key_Left|| event.key === Qt.Key_H) {
+                    } else if (event.key === Qt.Key_Left || event.key === Qt.Key_H) {
                         if (currentIndex > 0)
                             decrementCurrentIndex();
                         else if (root._wrapsIndex)
                             currentIndex = count - 1;
                         event.accepted = true;
-                    } else if (event.key === Qt.Key_Right|| event.key === Qt.Key_L) {
+                    } else if (event.key === Qt.Key_Right || event.key === Qt.Key_L) {
                         if (currentIndex < count - 1)
                             incrementCurrentIndex();
                         else if (root._wrapsIndex)
@@ -610,9 +626,7 @@ PluginComponent {
                 anchors.horizontalCenter: parent.horizontalCenter
                 text: {
                     const p = SessionData.wallpaperPath;
-                    return (!p || p.startsWith("#"))
-                        ? "No wallpaper configured"
-                        : "No images found in wallpaper folder";
+                    return (!p || p.startsWith("#")) ? "No wallpaper configured" : "No images found in wallpaper folder";
                 }
                 font.pixelSize: 24
                 font.bold: true
@@ -623,9 +637,7 @@ PluginComponent {
                 anchors.horizontalCenter: parent.horizontalCenter
                 text: {
                     const p = SessionData.wallpaperPath;
-                    return (!p || p.startsWith("#"))
-                        ? "Open DankMaterialShell Settings → Wallpaper,\nenable DMS wallpaper management and select a wallpaper."
-                        : "The folder '" + root.wallpaperFolder + "' is empty.\nAdd images or choose a different wallpaper in DMS Settings.";
+                    return (!p || p.startsWith("#")) ? "Open DankMaterialShell Settings → Wallpaper,\nenable DMS wallpaper management and select a wallpaper." : "The folder '" + root.wallpaperFolder + "' is empty.\nAdd images or choose a different wallpaper in DMS Settings.";
                 }
                 font.pixelSize: 14
                 color: "#BBBBBB"
@@ -657,10 +669,14 @@ PluginComponent {
         WlrLayershell.layer: WlrLayershell.Background
         WlrLayershell.exclusiveZone: 0
 
-        anchors { top: true; left: true }
+        anchors {
+            top: true
+            left: true
+        }
 
         Item {
-            width: 1; height: 1
+            width: 1
+            height: 1
             clip: true
 
             Repeater {
