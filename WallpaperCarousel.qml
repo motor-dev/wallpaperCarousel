@@ -276,26 +276,34 @@ PluginComponent {
 
             readonly property int itemWidth: parseInt(pluginData && pluginData.itemWidth) || 300
             readonly property int itemHeight: parseInt(pluginData && pluginData.itemHeight) || 420
-            readonly property int borderWidth: (pluginData && pluginData.borderWidth) || 3
-            readonly property real selectedScale: parseFloat(pluginData && pluginData.selectedScale) || 1.15
-            readonly property int overlayOpacity: (pluginData && pluginData.overlayOpacity) || 80
+            readonly property int borderWidth: (pluginData && pluginData.borderWidth !== undefined) ? parseInt(pluginData.borderWidth) : 3
+            readonly property real selectedScale: {
+                let val = (pluginData && pluginData.selectedScale !== undefined) ? parseFloat(pluginData.selectedScale) : 115;
+                return val > 10 ? val / 100.0 : val;
+            }
+            readonly property int overlayOpacity: (pluginData && pluginData.overlayOpacity !== undefined) ? parseInt(pluginData.overlayOpacity) : 80
             readonly property real skewFactor: -0.35
             readonly property int _baseWallpaperCount: folderModel.count
 
-            readonly property bool enableRounding: (pluginData && pluginData.enableRounding === "true")
-            readonly property int cornerRadius: parseInt(pluginData && pluginData.cornerRadius) || 15
-            readonly property bool expandSelected: (pluginData && pluginData.expandSelected === "true")
-            readonly property real expandMultiplier: (parseInt(pluginData && pluginData.expandMultiplier) || 150) / 100.0
-            readonly property real holdExpandRatio: (parseFloat(pluginData && pluginData.holdExpandRatio) || 80.0) / 100.0
-            readonly property int holdDelay: parseInt(pluginData && pluginData.holdDelay) || 1500
-            readonly property int activeMargin: parseInt(pluginData && pluginData.activeMargin) || 80
+            readonly property bool enableRounding: !!(pluginData && (pluginData.enableRounding === true || pluginData.enableRounding === "true"))
+            readonly property int cornerRadius: (pluginData && pluginData.cornerRadius !== undefined) ? parseInt(pluginData.cornerRadius) : 10
+            readonly property bool expandSelected: !!(pluginData && (pluginData.expandSelected === true || pluginData.expandSelected === "true"))
+            readonly property real expandMultiplier: ((pluginData && pluginData.expandMultiplier !== undefined) ? parseInt(pluginData.expandMultiplier) : 150) / 100.0
+            readonly property bool enableHoldExpand: !!(pluginData && (pluginData.enableHoldExpand === undefined || pluginData.enableHoldExpand === true || pluginData.enableHoldExpand === "true" || pluginData.enableHoldExpand !== "false"))
+            readonly property real holdExpandRatio: ((pluginData && pluginData.holdExpandRatio !== undefined) ? parseFloat(pluginData.holdExpandRatio) : 80.0) / 100.0
+            readonly property int holdDelay: (pluginData && pluginData.holdDelay !== undefined) ? parseInt(pluginData.holdDelay) : 5000
+            readonly property int activeMargin: (pluginData && pluginData.activeMargin !== undefined) ? parseInt(pluginData.activeMargin) : 80
 
             property int heldIndex: -1
 
             Timer {
                 id: holdTimer
                 interval: carousel.holdDelay
-                onTriggered: carousel.heldIndex = root._currentView.currentIndex
+                onTriggered: {
+                    if (carousel.enableHoldExpand) {
+                        carousel.heldIndex = root._currentView.currentIndex;
+                    }
+                }
             }
 
             property int confirmingIndex: -1
@@ -493,11 +501,10 @@ PluginComponent {
                                 maskSource: cornerMask
                             }
 
-                            // Outer skewed border image
                             Image {
                                 anchors.fill: parent
                                 source: delegateRoot.fileUrl
-                                sourceSize: Qt.size(carousel.itemWidth, carousel.itemHeight)
+                                sourceSize: isHeld ? Qt.size(width, height) : Qt.size(carousel.itemWidth, carousel.itemHeight)
                                 fillMode: Image.Stretch
                                 asynchronous: true
                                 visible: innerImage.status === Image.Ready
@@ -524,7 +531,7 @@ PluginComponent {
 
                                     fillMode: Image.PreserveAspectCrop
                                     source: delegateRoot.fileUrl
-                                    sourceSize: Qt.size(carousel.itemWidth, carousel.itemHeight)
+                                    sourceSize: isHeld ? Qt.size(width, height) : Qt.size(carousel.itemWidth, carousel.itemHeight)
                                     asynchronous: true
 
                                     transform: Matrix4x4 {
