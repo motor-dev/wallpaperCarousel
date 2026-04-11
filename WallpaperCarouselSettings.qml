@@ -267,26 +267,4 @@ PluginSettings {
         DankSlider { width: parent.width; minimum: 200; maximum: 10000; value: Number(colDelay.val) || colDelay.defaultValue; unit: "ms"; onSliderValueChanged: v => root.saveValue("holdDelay", v) }
     }
 
-    // -------------------------------------------------------------
-    // Active Margin
-    // -------------------------------------------------------------
-    Column {
-        id: colMargin
-        width: parent.width; spacing: Theme.spacingXS
-        property int defaultValue: 80
-        property var val: root.loadValue("activeMargin", defaultValue)
-        Row {
-            width: parent.width; spacing: Theme.spacingS
-            StyledText { text: "Active Margin (px)"; font.weight: Font.Medium; color: Theme.surfaceText; width: parent.width - 24 - Theme.spacingS }
-            DankIcon {
-                name: "restart_alt"; size: 20
-                opacity: String(colMargin.val) !== String(colMargin.defaultValue) ? 0.8 : 0.0
-                visible: opacity > 0
-                Behavior on opacity { NumberAnimation { duration: 200 } }
-                MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: root.saveValue("activeMargin", colMargin.defaultValue) }
-            }
-        }
-        StyledText { text: "Distance between the expanded center image and siblings."; font.pixelSize: Theme.fontSizeSmall; color: Theme.surfaceVariantText; width: parent.width; wrapMode: Text.WordWrap; opacity: 0.8 }
-        DankSlider { width: parent.width; minimum: 0; maximum: 300; value: Number(colMargin.val) || colMargin.defaultValue; unit: "px"; onSliderValueChanged: v => root.saveValue("activeMargin", v) }
-    }
 }

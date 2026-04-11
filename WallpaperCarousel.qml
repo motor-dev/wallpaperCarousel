@@ -292,7 +292,6 @@ PluginComponent {
             readonly property bool enableHoldExpand: !!(pluginData && (pluginData.enableHoldExpand === undefined || pluginData.enableHoldExpand === true || pluginData.enableHoldExpand === "true" || pluginData.enableHoldExpand !== "false"))
             readonly property real holdExpandRatio: ((pluginData && pluginData.holdExpandRatio !== undefined) ? parseFloat(pluginData.holdExpandRatio) : 80.0) / 100.0
             readonly property int holdDelay: (pluginData && pluginData.holdDelay !== undefined) ? parseInt(pluginData.holdDelay) : 5000
-            readonly property int activeMargin: (pluginData && pluginData.activeMargin !== undefined) ? parseInt(pluginData.activeMargin) : 80
 
             property int heldIndex: -1
 
@@ -413,12 +412,12 @@ PluginComponent {
                         onClicked: delegateRoot.pickWallpaper()
                     }
 
-                    readonly property real extraSpace: (carousel.itemWidth * carousel.expandMultiplier - carousel.itemWidth) + carousel.activeMargin
-                    readonly property real heldExtraSpace: (carousel.width * carousel.holdExpandRatio - carousel.itemWidth) + carousel.activeMargin
+                    readonly property real extraSpace: (carousel.itemWidth * carousel.expandMultiplier - carousel.itemWidth)
+                    readonly property real heldExtraSpace: (carousel.width * carousel.holdExpandRatio - carousel.itemWidth)
 
                     readonly property real visualXOffset: {
-                        if (isHeld) return 0;
                         if (!carousel.expandSelected && carousel.heldIndex < 0) return 0;
+                        if (isHeld) return 0;
                         if (distFromCenter === 0) return 0;
 
                         const space = (carousel.heldIndex >= 0) ? heldExtraSpace : extraSpace;
