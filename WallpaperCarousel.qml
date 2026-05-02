@@ -7,7 +7,7 @@ import qs.Common
 import qs.Services
 import qs.Widgets
 import qs.Modules.Plugins
-import Qt5Compat.GraphicalEffects
+import QtQuick.Effects
 
 PluginComponent {
     id: root
@@ -493,11 +493,15 @@ PluginComponent {
                                 height: parent.height
                                 radius: carousel.cornerRadius
                                 visible: false
+                                layer.enabled: true
                             }
 
                             layer.enabled: carousel.enableRounding
-                            layer.effect: OpacityMask {
+                            layer.effect: MultiEffect {
+                                maskEnabled: true
                                 maskSource: cornerMask
+                                maskSpreadAtMin: 1.0
+                                maskThresholdMin: 0.5
                             }
 
                             Image {
