@@ -2,7 +2,7 @@
     "id": "wallpaperCarousel",
     "name": "Wallpaper Carousel",
     "description": "Browse and pick wallpapers with a fullscreen skewed carousel overlay",
-    "version": "0.7.6",
+    "version": "0.7.7",
     "author": "yngwe",
     "icon": "wallpaper",
     "type": "daemon",
