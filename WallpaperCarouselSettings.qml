@@ -3,6 +3,7 @@ import qs.Common
 import qs.Widgets
 import qs.Modules.Plugins
 
+// Dank Material Shell setting page
 PluginSettings {
     id: root
     pluginId: "wallpaperCarousel"
@@ -62,7 +63,7 @@ PluginSettings {
     }
 
     // -------------------------------------------------------------------------
-    // General Settings
+    // General
     // -------------------------------------------------------------------------
     StringSetting {
         settingKey: "wallpaperDirectory"
@@ -75,7 +76,7 @@ PluginSettings {
     SelectionSetting {
         settingKey: "carouselMode"
         label: "Carousel Mode"
-        description: "Standard, Wrap, or Infinite view types."
+        description: "Standard stops at the edges. Wrap loops the index. Infinite shows a seamless repeating view."
         defaultValue: "wrap"
         options: [
             { label: "Standard", value: "standard" },
@@ -84,6 +85,9 @@ PluginSettings {
         ]
     }
 
+    // -------------------------------------------------------------------------
+    // Visual
+    // -------------------------------------------------------------------------
     SettingSlider {
         label: "Background Dimming"
         desc: "Opacity of the dark overlay behind the carousel."
@@ -93,72 +97,51 @@ PluginSettings {
     }
 
     SettingSlider {
-        label: "Corner Radius"
-        desc: "Adjust the corner radius of thumbnails. Set to 0 to disable rounding."
-        settingKey: "cornerRadius"
-        defaultVal: 0
-        unit: "px"
-    }
-
-    // -------------------------------------------------------------------------
-    // Layout Settings
-    // -------------------------------------------------------------------------
-    SettingSlider {
-        label: "Item Width"
-        desc: "Width of each wallpaper thumbnail in pixels."
-        settingKey: "itemWidth"
-        min: 100; max: 1000; defaultVal: 300; unit: "px"
-    }
-
-    SettingSlider {
-        label: "Item Height"
-        desc: "Height of each wallpaper thumbnail in pixels."
-        settingKey: "itemHeight"
-        min: 100; max: 1440; defaultVal: 420; unit: "px"
-    }
-
-    SettingSlider {
         label: "Border Width"
         desc: "Width of the skewed border around thumbnails."
         settingKey: "borderWidth"
         max: 20; defaultVal: 3; unit: "px"
     }
 
+    SettingSlider {
+        label: "Corner Radius"
+        desc: "Corner radius of thumbnails. Set to 0 to disable rounding."
+        settingKey: "cornerRadius"
+        defaultVal: 0
+        unit: "px"
+    }
+
     // -------------------------------------------------------------------------
-    // Visual Effects
+    // Size
     // -------------------------------------------------------------------------
-    SelectionSetting {
-        settingKey: "expandSelected"
-        label: "Expand Selected Image"
-        description: "When an image is centered, expand its width to show more."
-        defaultValue: "false"
-        options: [
-            { label: "Disabled", value: "false" },
-            { label: "Enabled", value: "true" }
-        ]
+    SettingSlider {
+        label: "Item Width"
+        desc: "Width of each wallpaper thumbnail."
+        settingKey: "itemWidth"
+        min: 100; max: 1000; defaultVal: 300; unit: "px"
     }
 
     SettingSlider {
-        label: "Selected Scale"
-        desc: "Scale for the centered image."
+        label: "Item Height"
+        desc: "Height of each wallpaper thumbnail."
+        settingKey: "itemHeight"
+        min: 100; max: 1440; defaultVal: 420; unit: "px"
+    }
+
+    SettingSlider {
+        label: "Center Tile Zoom"
+        desc: "Size of the centered tile relative to the surrounding tiles."
         settingKey: "selectedScale"
         min: 100; max: 150; defaultVal: 108; unit: "%"
     }
 
-    SettingSlider {
-        label: "Expansion Amount"
-        desc: "Width multiplier for the centered image."
-        settingKey: "expandMultiplier"
-        min: 100; max: 300; defaultVal: 120; unit: "%"
-    }
-
     // -------------------------------------------------------------------------
-    // Interaction Settings
+    // Expansion
     // -------------------------------------------------------------------------
     SelectionSetting {
-        settingKey: "enableHoldExpand"
-        label: "Enable Hold to Expand"
-        description: "Stay on an image to trigger a larger immersive preview."
+        settingKey: "expandSelected"
+        label: "Expand Selected"
+        description: "Expand the centered tile's width to reveal more of the image."
         defaultValue: "false"
         options: [
             { label: "Disabled", value: "false" },
@@ -167,15 +150,33 @@ PluginSettings {
     }
 
     SettingSlider {
-        label: "Hold Screen Coverage"
-        desc: "Percentage of screen coverage for the hold preview."
+        label: "Expansion Amount"
+        desc: "Width multiplier applied when the centered tile is expanded."
+        settingKey: "expandMultiplier"
+        min: 100; max: 300; defaultVal: 120; unit: "%"
+    }
+
+    SelectionSetting {
+        settingKey: "enableHoldExpand"
+        label: "Hold to Expand"
+        description: "Dwell on a tile to trigger a large immersive preview."
+        defaultValue: "false"
+        options: [
+            { label: "Disabled", value: "false" },
+            { label: "Enabled", value: "true" }
+        ]
+    }
+
+    SettingSlider {
+        label: "Hold Coverage"
+        desc: "Screen coverage for the hold preview."
         settingKey: "holdExpandRatio"
         min: 30; max: 100; defaultVal: 35; unit: "%"
     }
 
     SettingSlider {
         label: "Hold Delay"
-        desc: "Time to stay on an image before it expands."
+        desc: "Time to dwell on a tile before the preview activates."
         settingKey: "holdDelay"
         min: 200; max: 10000; defaultVal: 1500; unit: "ms"
     }
