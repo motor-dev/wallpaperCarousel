@@ -8,6 +8,7 @@
   "description": "Browse and pick wallpapers with a fullscreen skewed carousel overlay",
   "repository": "https://github.com/TryCatch2022/wallpaperCarousel",
   "tags": [
+    "Theming",
     "Wallpaper"
   ],
   "entryPoints": {
