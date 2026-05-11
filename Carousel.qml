@@ -41,11 +41,20 @@ Item {
     // ── Folder cache ──────────────────────────────────────────────────────────
     property var _folderCache: ({})
     property bool _initialSyncDone: false
+    property int _currentCacheIndex: -1
+    property var _cacheEntries: []
 
     readonly property var _nameFilters: [
         "*.jpg", "*.jpeg", "*.png", "*.webp", "*.gif",
         "*.bmp", "*.jxl", "*.avif", "*.heif", "*.exr"
     ]
+
+    onCurrentWallpaperPathChanged: {
+        if (folderModel.status === FolderListModel.Ready && folderModel.count > 0) {
+            root._currentCacheIndex = root._findCurrentIndex();
+            root._rebuildCacheEntries();
+        }
+    }
 
     onWallpaperFolderUrlChanged: {
         modelSyncTimer.stop();
@@ -96,6 +105,28 @@ Item {
         return entries;
     }
 
+    function _findCurrentIndex() {
+        const fileName = (root.currentWallpaperPath || "").split('/').pop();
+        if (!fileName) return 0;
+        for (let i = 0; i < folderModel.count; i++) {
+            if (folderModel.get(i, "fileName") === fileName)
+                return i;
+        }
+        return 0;
+    }
+
+    function _rebuildCacheEntries() {
+        const count = folderModel.count;
+        if (count === 0) { root._cacheEntries = []; return; }
+        const center = root._currentCacheIndex >= 0 ? root._currentCacheIndex : root._findCurrentIndex();
+        const start = Math.max(0, center - 20);
+        const end = Math.min(count - 1, center + 20);
+        const entries = [];
+        for (let i = start; i <= end; i++)
+            entries.push(folderModel.get(i, "fileUrl").toString());
+        root._cacheEntries = entries;
+    }
+
     function _populateStableModel(entries) {
         const activeView = root._currentView;
         const savedIndex = activeView.currentIndex;
@@ -131,6 +162,8 @@ Item {
         const entries = _readFolderModel(folderModel);
         root._folderCache[root.wallpaperFolder] = entries;
         _populateStableModel(entries);
+        root._currentCacheIndex = root._findCurrentIndex();
+        root._rebuildCacheEntries();
         carousel.tryFocus();
     }
 
@@ -635,11 +668,11 @@ Item {
             clip: true
 
             Repeater {
-                model: stableModel
+                model: root._cacheEntries
                 Image {
                     width: carousel.itemWidth; height: carousel.itemHeight
                     asynchronous: true
-                    source: fileUrl
+                    source: modelData
                     sourceSize: Qt.size(carousel.itemWidth, carousel.itemHeight)
                     fillMode: Image.PreserveAspectCrop
                 }
