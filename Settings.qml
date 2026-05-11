@@ -184,5 +184,14 @@ ColumnLayout {
         key: "holdDelay"; min: 200; max: 10000; defaultValue: 1500; unit: "ms"
     }
 
+    // ── Performance ───────────────────────────────────────────────────────────
+    Label { text: "Performance"; font.bold: true; font.pixelSize: 14; Layout.topMargin: 8 }
+
+    SettingSlider {
+        label: "Cache Size"
+        description: "Total number of wallpapers to pre-cache, split evenly before and after the current selection. Reduce to save memory on large collections."
+        key: "cacheSize"; min: 10; max: 1000; defaultValue: 30; unit: " imgs"
+    }
+
     Item { Layout.fillHeight: true }
 }

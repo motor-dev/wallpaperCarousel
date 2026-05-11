@@ -119,8 +119,9 @@ Item {
         const count = folderModel.count;
         if (count === 0) { root._cacheEntries = []; return; }
         const center = root._currentCacheIndex >= 0 ? root._currentCacheIndex : root._findCurrentIndex();
-        const start = Math.max(0, center - 20);
-        const end = Math.min(count - 1, center + 20);
+        const radius = Math.floor(((root.cfg.cacheSize !== undefined) ? parseInt(root.cfg.cacheSize) : 200) / 2);
+        const start = Math.max(0, center - radius);
+        const end = Math.min(count - 1, center + radius);
         const entries = [];
         for (let i = start; i <= end; i++)
             entries.push(folderModel.get(i, "fileUrl").toString());

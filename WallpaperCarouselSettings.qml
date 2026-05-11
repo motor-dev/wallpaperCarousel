@@ -180,4 +180,14 @@ PluginSettings {
         settingKey: "holdDelay"
         min: 200; max: 10000; defaultVal: 1500; unit: "ms"
     }
+
+    // -------------------------------------------------------------------------
+    // Performance
+    // -------------------------------------------------------------------------
+    SettingSlider {
+        label: "Cache Size"
+        desc: "Total number of wallpapers to pre-cache, split evenly before and after the current selection. Reduce to save memory on large collections."
+        settingKey: "cacheSize"
+        min: 10; max: 1000; defaultVal: 30; unit: " imgs"
+    }
 }
