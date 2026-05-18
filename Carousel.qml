@@ -35,7 +35,7 @@ Item {
     readonly property bool _wrapsIndex: _carouselMode !== "standard"
     on_CarouselModeChanged: if (_initialSyncDone) Qt.callLater(_syncStableModel)
 
-    readonly property var _currentView: _isInfinite ? pathView : listView
+    readonly property var _currentView: (_isInfinite && !carousel.searchActive) ? pathView : listView
     readonly property string wallpaperFolderUrl: "file://" + wallpaperFolder
 
     // ── Folder cache ──────────────────────────────────────────────────────────
@@ -69,6 +69,7 @@ Item {
     }
 
     ListModel { id: stableModel }
+    ListModel { id: filteredModel }
 
     Timer {
         id: modelSyncTimer
@@ -165,7 +166,23 @@ Item {
         _populateStableModel(entries);
         root._currentCacheIndex = root._findCurrentIndex();
         root._rebuildCacheEntries();
+        _applySearch();
         carousel.tryFocus();
+    }
+
+    function _applySearch() {
+        const text = carousel._searchText.toLowerCase();
+        const allEntries = root._folderCache[root.wallpaperFolder] || [];
+        filteredModel.clear();
+        const entries = text.length === 0
+            ? allEntries
+            : allEntries.filter(e => e.fileName.toLowerCase().indexOf(text) !== -1);
+        for (let i = 0; i < entries.length; i++)
+            filteredModel.append(entries[i]);
+        if (filteredModel.count > 0 && carousel.searchActive) {
+            listView.currentIndex = 0;
+            listView.positionViewAtIndex(0, ListView.Center);
+        }
     }
 
     // ── Public API ────────────────────────────────────────────────────────────
@@ -179,8 +196,9 @@ Item {
         if (focusedScreen)
             overlay.screen = focusedScreen;
         overlay.visible = true;
+        searchInput.text = "";
+        carousel.searchVisible = false;
         carousel.tryFocus();
-        root._currentView.forceActiveFocus();
         Qt.callLater(() => root._currentView.forceActiveFocus());
     }
 
@@ -243,6 +261,9 @@ Item {
             Behavior on opacity { NumberAnimation { duration: 150 } }
 
             property bool initialFocusSet: false
+            property string _searchText: ""
+            readonly property bool searchActive: _searchText.length > 0
+            property bool searchVisible: false
 
             function tryFocus() {
                 if (initialFocusSet) return;
@@ -335,10 +356,12 @@ Item {
                     required property string fileName
                     required property string fileUrl
 
-                    readonly property bool isCurrent: root._isInfinite ? PathView.isCurrentItem : ListView.isCurrentItem
+                    readonly property bool _effectivelyInfinite: root._isInfinite && !carousel.searchActive
+
+                    readonly property bool isCurrent: _effectivelyInfinite ? PathView.isCurrentItem : ListView.isCurrentItem
 
                     readonly property int distFromCenter: {
-                        if (root._isInfinite) {
+                        if (_effectivelyInfinite) {
                             const n = stableModel.count;
                             if (n <= 1) return 0;
                             const d = Math.abs(index - pathView.currentIndex);
@@ -350,7 +373,7 @@ Item {
                     readonly property real falloff: 1.0 / (1.0 + distFromCenter * distFromCenter)
 
                     readonly property real _dupeFade: {
-                        if (!root._isInfinite) return 1.0;
+                        if (!_effectivelyInfinite) return 1.0;
                         const base = carousel._baseWallpaperCount;
                         if (base <= 0 || base >= stableModel.count) return 1.0;
                         const n = stableModel.count;
@@ -395,7 +418,7 @@ Item {
                         if (distFromCenter === 0) return 0;
                         const space = (carousel.heldIndex >= 0) ? heldExtraSpace : extraSpace;
                         let signedDist = 0;
-                        if (root._isInfinite) {
+                        if (_effectivelyInfinite) {
                             let d = index - pathView.currentIndex;
                             const h = stableModel.count / 2;
                             if (d > h) d -= stableModel.count;
@@ -502,9 +525,9 @@ Item {
             PathView {
                 id: pathView
                 anchors.fill: parent
-                visible: root._isInfinite
+                visible: root._isInfinite && !carousel.searchActive
 
-                model: root._isInfinite ? stableModel : null
+                model: (root._isInfinite && !carousel.searchActive) ? stableModel : null
                 delegate: carouselDelegate
 
                 pathItemCount: Math.max(1, Math.min(stableModel.count, Math.ceil(width / carousel.itemWidth) + 4))
@@ -517,12 +540,16 @@ Item {
                 highlightMoveDuration: carousel.initialFocusSet ? 150 : 0
                 movementDirection: PathView.Shortest
 
-                focus: root._isInfinite && overlay.visible
+                focus: root._isInfinite && !carousel.searchVisible && overlay.visible
 
                 Keys.onPressed: event => {
                     if (carousel.confirmingIndex >= 0) { event.accepted = true; return; }
                     if (event.key === Qt.Key_Escape) {
                         root.close(); event.accepted = true;
+                    } else if (event.key === Qt.Key_F && (event.modifiers & Qt.ControlModifier)) {
+                        carousel.searchVisible = true;
+                        searchInput.forceActiveFocus();
+                        event.accepted = true;
                     } else if (event.key === Qt.Key_Left || event.key === Qt.Key_H) {
                         decrementCurrentIndex(); event.accepted = true;
                     } else if (event.key === Qt.Key_Right || event.key === Qt.Key_L) {
@@ -555,9 +582,9 @@ Item {
             ListView {
                 id: listView
                 anchors.fill: parent
-                visible: !root._isInfinite
+                visible: !root._isInfinite || carousel.searchActive
 
-                model: root._isInfinite ? null : stableModel
+                model: carousel.searchActive ? filteredModel : (root._isInfinite ? null : stableModel)
                 delegate: carouselDelegate
 
                 spacing: 0
@@ -571,12 +598,16 @@ Item {
 
                 highlightMoveDuration: carousel.initialFocusSet ? 150 : 0
 
-                focus: !root._isInfinite && overlay.visible
+                focus: !root._isInfinite && !carousel.searchVisible && overlay.visible
 
                 Keys.onPressed: event => {
                     if (carousel.confirmingIndex >= 0) { event.accepted = true; return; }
                     if (event.key === Qt.Key_Escape) {
                         root.close(); event.accepted = true;
+                    } else if (event.key === Qt.Key_F && (event.modifiers & Qt.ControlModifier)) {
+                        carousel.searchVisible = true;
+                        searchInput.forceActiveFocus();
+                        event.accepted = true;
                     } else if (event.key === Qt.Key_Left || event.key === Qt.Key_H) {
                         if (currentIndex > 0) decrementCurrentIndex();
                         else if (root._wrapsIndex) currentIndex = count - 1;
@@ -599,6 +630,83 @@ Item {
                 onCurrentIndexChanged: {
                     carousel.heldIndex = -1;
                     holdTimer.restart();
+                }
+            }
+        }
+
+        // ── Search bar ────────────────────────────────────────────────────────
+        Item {
+            id: searchBar
+            visible: carousel.searchVisible
+            anchors.top: parent.top
+            anchors.topMargin: 24
+            anchors.horizontalCenter: parent.horizontalCenter
+            width: searchBox.width
+            height: searchBox.height
+            z: 200
+
+            MouseArea {
+                anchors.fill: parent
+            }
+
+            Rectangle {
+                id: searchBox
+                width: 360
+                height: 40
+                radius: 8
+                color: "#BB000000"
+                border.color: searchInput.activeFocus ? "#AAFFFFFF" : "#44FFFFFF"
+                border.width: 1
+
+                Behavior on border.color { ColorAnimation { duration: 150 } }
+
+                Text {
+                    anchors.fill: parent
+                    anchors.leftMargin: 12
+                    anchors.rightMargin: 12
+                    verticalAlignment: Text.AlignVCenter
+                    text: "Search wallpapers..."
+                    color: "#55FFFFFF"
+                    font.pixelSize: 15
+                    visible: searchInput.text.length === 0
+                }
+
+                TextInput {
+                    id: searchInput
+                    anchors.fill: parent
+                    anchors.leftMargin: 12
+                    anchors.rightMargin: 12
+                    verticalAlignment: TextInput.AlignVCenter
+                    color: "white"
+                    font.pixelSize: 15
+                    clip: true
+
+                    onTextChanged: {
+                        carousel._searchText = text;
+                        root._applySearch();
+                    }
+
+                    Keys.onPressed: event => {
+                        if (event.key === Qt.Key_Escape) {
+                            if (text.length > 0) {
+                                text = "";
+                            } else {
+                                carousel.searchVisible = false;
+                                root._currentView.forceActiveFocus();
+                            }
+                            event.accepted = true;
+                        } else if (event.key === Qt.Key_Left) {
+                            root._currentView.decrementCurrentIndex();
+                            event.accepted = true;
+                        } else if (event.key === Qt.Key_Right) {
+                            root._currentView.incrementCurrentIndex();
+                            event.accepted = true;
+                        } else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
+                            const v = root._currentView;
+                            if (v.currentItem) v.currentItem.pickWallpaper();
+                            event.accepted = true;
+                        }
+                    }
                 }
             }
         }
