@@ -1,12 +1,12 @@
 {
   "id": "wallpaper-carousel",
   "name": "Wallpaper Carousel",
-  "version": "0.8.2",
+  "version": "0.8.3",
   "minNoctaliaVersion": "3.6.0",
   "author": "yngwe",
   "license": "MIT",
   "description": "Browse and pick wallpapers with a fullscreen skewed carousel overlay",
-  "repository": "https://github.com/TryCatch2022/wallpaperCarousel",
+  "repository": "https://github.com/motor-dev/wallpaperCarousel",
   "tags": [
     "Theming",
     "Wallpaper"
