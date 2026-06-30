@@ -765,7 +765,7 @@ Item {
         id: cacheWindow
         visible: true
         color: "transparent"
-        width: 1; height: 1
+        implicitWidth: 1; implicitHeight: 1
 
         WlrLayershell.namespace: root.wlrNamespace + ":precache"
         WlrLayershell.layer: WlrLayershell.Background
