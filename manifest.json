@@ -32,7 +32,8 @@
       "expandMultiplier": 120,
       "enableHoldExpand": "false",
       "holdExpandRatio": 35,
-      "holdDelay": 1500
+      "holdDelay": 1500,
+      "cacheSize": 30
     }
   }
 }

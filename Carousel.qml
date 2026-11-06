@@ -143,7 +143,8 @@ Item {
             return;
         }
         const center = root._currentCacheIndex >= 0 ? root._currentCacheIndex : root._findCurrentIndex();
-        const radius = Math.floor(((root.cfg.cacheSize !== undefined) ? parseInt(root.cfg.cacheSize) : 200) / 2);
+        const cacheSize = parseInt(root.cfg.cacheSize);
+        const radius = Math.floor((isNaN(cacheSize) ? 30 : cacheSize) / 2);  // 30 = settings default
         const entries = [];
         if (radius * 2 + 1 >= count) {
             for (let i = 0; i < count; i++)
