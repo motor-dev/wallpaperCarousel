@@ -66,6 +66,11 @@ Item {
         }
     }
 
+    on_WrapsIndexChanged: {
+        if (folderModel.status === FolderListModel.Ready && folderModel.count > 0)
+            root._rebuildCacheEntries();
+    }
+
     onWallpaperFolderUrlChanged: {
         modelSyncTimer.stop();
         const cached = _folderCache[wallpaperFolder];
@@ -139,11 +144,21 @@ Item {
         }
         const center = root._currentCacheIndex >= 0 ? root._currentCacheIndex : root._findCurrentIndex();
         const radius = Math.floor(((root.cfg.cacheSize !== undefined) ? parseInt(root.cfg.cacheSize) : 200) / 2);
-        const start = Math.max(0, center - radius);
-        const end = Math.min(count - 1, center + radius);
         const entries = [];
-        for (let i = start; i <= end; i++)
-            entries.push(folderModel.get(i, "fileUrl").toString());
+        if (radius * 2 + 1 >= count) {
+            for (let i = 0; i < count; i++)
+                entries.push(folderModel.get(i, "fileUrl").toString());
+        } else if (root._wrapsIndex) {
+            // Wrap/infinite: neighbours of the first item are the last items (and vice
+            // versa), so the window must wrap around the ends instead of being clamped.
+            for (let k = -radius; k <= radius; k++)
+                entries.push(folderModel.get(((center + k) % count + count) % count, "fileUrl").toString());
+        } else {
+            const start = Math.max(0, center - radius);
+            const end = Math.min(count - 1, center + radius);
+            for (let i = start; i <= end; i++)
+                entries.push(folderModel.get(i, "fileUrl").toString());
+        }
         root._cacheEntries = entries;
     }
 
