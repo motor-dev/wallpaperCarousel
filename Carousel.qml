@@ -75,7 +75,39 @@ Item {
     property var _folderCache: ({})
     property bool _initialSyncDone: false
     property int _currentCacheIndex: -1
-    property var _cacheEntries: []
+    // Pre-cache window contents. A ListModel updated in place (rather than a JS
+    // array reassigned on every rebuild) keeps the Repeater's Images for entries
+    // that stay in the window alive: reassigning an array recreates every
+    // delegate, and Qt keeps only a small pool of unreferenced images, so each
+    // wallpaper pick would otherwise reload the whole window from disk.
+    ListModel {
+        id: cacheModel
+    }
+
+    // `urls`: the window, nearest-first; missing ones are appended in that order so
+    // they load in it. `keepUrls`: a wider zone whose already-loaded entries are not
+    // evicted yet (hysteresis), so scrolling back and forth does not re-decode them.
+    function _setCacheEntries(urls, keepUrls) {
+        const keep = {};
+        for (const url of urls)
+            keep[url] = true;
+        for (const url of (keepUrls || []))
+            keep[url] = true;
+        const present = {};
+        for (let i = cacheModel.count - 1; i >= 0; i--) {
+            const url = cacheModel.get(i).url;
+            if (keep[url] && !present[url])
+                present[url] = true;
+            else
+                cacheModel.remove(i);
+        }
+        for (const url of urls) {
+            if (!present[url]) {
+                present[url] = true;
+                cacheModel.append({ url: url });
+            }
+        }
+    }
 
     readonly property var _nameFilters: ["*.jpg", "*.jpeg", "*.png", "*.webp", "*.gif", "*.bmp", "*.jxl", "*.avif", "*.heif", "*.exr"]
 
@@ -156,31 +188,117 @@ Item {
         return 0;
     }
 
+    // While browsing, the pre-cache window follows the highlighted tile rather than
+    // the applied wallpaper, so scrolling past cacheSize/2 tiles does not run into
+    // uncached images. Throttled, not debounced: auto-repeat and flicks change the
+    // index faster than the interval, and a debounce would freeze the window for
+    // the whole of a long scroll. The timer is only started when idle, so the
+    // window moves at most once per interval but keeps moving while scrolling.
+    Timer {
+        id: cacheFollowTimer
+        interval: 150
+        onTriggered: root._rebuildCacheEntries()
+    }
+
+    // Last scroll direction in folder order: +1, -1, or 0 (none yet / re-centred).
+    property int _scrollDirection: 0
+
+    function _followViewIndex(viewIndex) {
+        // Search results are a filtered list whose indices are not folder indices.
+        const count = folderModel.count;
+        if (!overlay.visible || carousel.searchActive || viewIndex < 0 || count === 0)
+            return;
+        // The infinite view repeats the folder list, so fold its index back.
+        const index = viewIndex % count;
+        const previous = root._currentCacheIndex;
+        if (previous >= 0 && index !== previous) {
+            let delta = index - previous;
+            // Wrapping past an end is a single step, not a jump across the list.
+            if (root._wrapsIndex) {
+                if (delta > count / 2)
+                    delta -= count;
+                else if (delta < -count / 2)
+                    delta += count;
+            }
+            root._scrollDirection = delta > 0 ? 1 : -1;
+        }
+        root._currentCacheIndex = index;
+        if (!cacheFollowTimer.running)
+            cacheFollowTimer.start();
+    }
+
+    // Once closed, re-centre on the applied wallpaper so the next open is instant.
+    onOverlayVisibleChanged: {
+        if (overlayVisible || folderModel.status !== FolderListModel.Ready || folderModel.count === 0)
+            return;
+        cacheFollowTimer.stop();
+        root._scrollDirection = 0;
+        root._currentCacheIndex = root._findCurrentIndex();
+        root._rebuildCacheEntries();
+    }
+
+    // Folder indices around `center`, nearest-first, `ahead` steps in `direction`
+    // and `behind` steps against it. Wrap/infinite: neighbours of the first item are
+    // the last items (and vice versa), so it wraps around the ends; standard clamps.
+    function _windowIndices(center, ahead, behind, direction) {
+        const count = folderModel.count;
+        const dir = direction < 0 ? -1 : 1;
+        const out = [];
+        const seen = {};
+        const take = i => {
+            if (root._wrapsIndex)
+                i = ((i % count) + count) % count;
+            else if (i < 0 || i >= count)
+                return;
+            if (seen[i])
+                return;
+            seen[i] = true;
+            out.push(i);
+        };
+        take(center);
+        for (let d = 1; (d <= ahead || d <= behind) && out.length < count; d++) {
+            if (d <= ahead)
+                take(center + dir * d);
+            if (d <= behind)
+                take(center - dir * d);
+        }
+        return out;
+    }
+
     function _rebuildCacheEntries() {
         const count = folderModel.count;
         if (count === 0) {
-            root._cacheEntries = [];
+            root._setCacheEntries([], []);
             return;
         }
-        const center = root._currentCacheIndex >= 0 ? root._currentCacheIndex : root._findCurrentIndex();
-        const cacheSize = parseInt(root.cfg.cacheSize);
-        const radius = Math.floor((isNaN(cacheSize) ? 30 : cacheSize) / 2);  // 30 = settings default
-        const entries = [];
-        if (radius * 2 + 1 >= count) {
-            for (let i = 0; i < count; i++)
-                entries.push(folderModel.get(i, "fileUrl").toString());
-        } else if (root._wrapsIndex) {
-            // Wrap/infinite: neighbours of the first item are the last items (and vice
-            // versa), so the window must wrap around the ends instead of being clamped.
-            for (let k = -radius; k <= radius; k++)
-                entries.push(folderModel.get(((center + k) % count + count) % count, "fileUrl").toString());
-        } else {
-            const start = Math.max(0, center - radius);
-            const end = Math.min(count - 1, center + radius);
-            for (let i = start; i <= end; i++)
-                entries.push(folderModel.get(i, "fileUrl").toString());
+        const found = root._currentCacheIndex >= 0 ? root._currentCacheIndex : root._findCurrentIndex();
+        const center = Math.max(0, Math.min(count - 1, found));
+        const parsed = parseInt(root.cfg.cacheSize);
+        const cacheSize = Math.max(1, isNaN(parsed) ? 30 : parsed);  // 30 = settings default
+        const urlsOf = indices => indices.map(i => folderModel.get(i, "fileUrl").toString());
+
+        // The window covers the whole folder: cache everything, nearest-first.
+        if (cacheSize >= count) {
+            root._setCacheEntries(urlsOf(root._windowIndices(center, count, count, 1)), []);
+            return;
         }
-        root._cacheEntries = entries;
+
+        // cacheSize tiles in total. While scrolling, two thirds of them lie ahead in
+        // the direction of travel, where the next tiles come from; at rest (open,
+        // re-centre) the window is symmetric.
+        const radius = Math.floor(cacheSize / 2);
+        const span = cacheSize - 1;
+        const ahead = root._scrollDirection !== 0 ? Math.round(span * 2 / 3) : radius;
+        const behind = root._scrollDirection !== 0 ? span - ahead : span - radius;
+        // Keep zone: entries up to 2x the radius away on either side survive
+        // eviction, so a reversal finds the tiles just passed still decoded. 2x is
+        // the smallest that covers the biased "ahead" side after a reversal; less
+        // re-decodes a few edge tiles on every change of direction. Costs up to
+        // ~2x cacheSize thumbnails in memory.
+        const keepReach = Math.max(ahead, radius * 2);
+        root._setCacheEntries(
+            urlsOf(root._windowIndices(center, ahead, behind, root._scrollDirection)),
+            urlsOf(root._windowIndices(center, keepReach, keepReach, 1)));
     }
 
     function _populateStableModel(entries) {
@@ -619,7 +737,9 @@ Item {
                                 anchors.fill: parent
                                 source: delegateRoot.fileUrl
                                 sourceSize: (carousel.heldIndex === delegateRoot.index) ? Qt.size(width, height) : Qt.size(carousel.itemWidth, carousel.itemHeight)
-                                fillMode: Image.Stretch
+                                // Must match innerImage and the pre-cache window: fillMode is part of
+                                // Qt's image cache key, so any other mode decodes the file again.
+                                fillMode: Image.PreserveAspectCrop
                                 asynchronous: true
                                 visible: innerImage.status === Image.Ready
                             }
@@ -707,6 +827,7 @@ Item {
                 onCurrentIndexChanged: {
                     carousel.heldIndex = -1;
                     holdTimer.restart();
+                    root._followViewIndex(currentIndex);
                 }
 
                 readonly property real _pathLen: pathItemCount * carousel.itemWidth
@@ -784,6 +905,7 @@ Item {
                 onCurrentIndexChanged: {
                     carousel.heldIndex = -1;
                     holdTimer.restart();
+                    root._followViewIndex(currentIndex);
                 }
             }
         }
@@ -959,12 +1081,12 @@ Item {
             clip: true
 
             Repeater {
-                model: root._cacheEntries
+                model: cacheModel
                 Image {
                     width: carousel.itemWidth
                     height: carousel.itemHeight
                     asynchronous: true
-                    source: modelData
+                    source: model.url
                     sourceSize: Qt.size(carousel.itemWidth, carousel.itemHeight)
                     fillMode: Image.PreserveAspectCrop
                 }
