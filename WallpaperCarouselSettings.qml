@@ -23,6 +23,11 @@ PluginSettings {
 
         width: parent.width; spacing: Theme.spacingXS
         property var val: root.loadValue(settingKey, defaultVal)
+        // Treat only missing/invalid values as "unset" — a saved 0 is a real value.
+        readonly property int numVal: {
+            const n = Number(val);
+            return (val === undefined || val === null || val === "" || isNaN(n)) ? defaultVal : n;
+        }
 
         Row {
             width: parent.width; spacing: Theme.spacingS
@@ -34,13 +39,13 @@ PluginSettings {
             }
             DIcon {
                 name: "restart_alt"; size: 20
-                opacity: String(sliderRoot.val) !== String(defaultVal) ? 0.8 : 0.0
+                opacity: sliderRoot.numVal !== sliderRoot.defaultVal ? 0.8 : 0.0
                 visible: opacity > 0
                 Behavior on opacity { NumberAnimation { duration: 200 } }
                 MouseArea { 
                     anchors.fill: parent
                     cursorShape: Qt.PointingHandCursor
-                    onClicked: root.saveValue(settingKey, defaultVal) 
+                    onClicked: root.saveValue(sliderRoot.settingKey, sliderRoot.defaultVal)
                 }
             }
         }
@@ -56,7 +61,10 @@ PluginSettings {
             width: parent.width
             minimum: sliderRoot.min
             maximum: sliderRoot.max
-            value: Number(sliderRoot.val) || sliderRoot.defaultVal
+            // DSlider assigns `value` imperatively while dragging, which would
+            // break a plain `value:` binding (so reset stopped moving the handle).
+            // A Binding object survives that and re-applies whenever numVal changes.
+            Binding on value { value: sliderRoot.numVal }
             unit: sliderRoot.unit
             onSliderValueChanged: v => root.saveValue(sliderRoot.settingKey, v) 
         }
