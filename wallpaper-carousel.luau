@@ -159,6 +159,27 @@ local function currentConfig()
 	}
 end
 
+-- ── Theme ─────────────────────────────────────────────────────────────────────
+--
+-- Palette colours for the overlay's search field and scrim, re-read on every
+-- state write (there is no theme-change hook), so each open picks up the current
+-- palette. noctalia.getColor only exists from plugin_api 31 (v5.2.0); on older
+-- shells, and for any role it returns nil for, the carousel keeps its defaults.
+-- Only role names that predate the plugin_api 43 renames are used, so this needs
+-- no plugin_api bump and logs no deprecation warnings.
+local function currentTheme()
+	if typeof(noctalia.getColor) ~= "function" then
+		return {}
+	end
+	return {
+		scrim = noctalia.getColor("scrim"),
+		surface = noctalia.getColor("surface"),
+		onSurface = noctalia.getColor("on_surface"),
+		onSurfaceVariant = noctalia.getColor("on_surface_variant"),
+		primary = noctalia.getColor("primary"),
+	}
+end
+
 -- ── State file ────────────────────────────────────────────────────────────────
 
 local seq = 0
@@ -208,6 +229,7 @@ local function buildState(command: string, screen: string)
 		screen = screen,
 		entryId = ENTRY_ID,
 		config = currentConfig(),
+		theme = currentTheme(),
 		wallpaperDirectory = directory,
 		wallpaperConfigured = directory ~= "" or browsing ~= "",
 		currentWallpaper = current,

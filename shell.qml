@@ -42,6 +42,15 @@ ShellRoot {
     property var currentWallpaperByScreen: ({})  // { [outputName]: path }; "" = the shell-wide default
     property var extraWallpaperDirectories: []
     property bool wallpaperConfigured: false
+    // Palette from noctalia.getColor, as "#RRGGBB" per role; any role may be
+    // missing (older shell, unknown role), in which case Carousel's default stays.
+    property var theme: ({})
+
+    // A themed colour with alpha prepended, or the fallback when the role is missing.
+    function themeColor(role, alphaHex, fallback) {
+        const hex = root.theme[role];
+        return (typeof hex === "string" && /^#[0-9A-Fa-f]{6}$/.test(hex)) ? "#" + alphaHex + hex.slice(1) : fallback;
+    }
 
     // Set from the state file so the reply address is never hardcoded here.
     property string serviceEntryId: "yngwe/wallpaperCarousel:service"
@@ -107,6 +116,8 @@ ShellRoot {
         // handing a bare object to the Repeater that pre-scans these.
         root.extraWallpaperDirectories = Array.isArray(state.extraDirectories) ? state.extraDirectories : [];
         root.wallpaperConfigured = !!state.wallpaperConfigured;
+        // An empty Lua table serializes to `[]` or `{}`; either way, no roles.
+        root.theme = (state.theme && !Array.isArray(state.theme)) ? state.theme : {};
         if (state.entryId)
             root.serviceEntryId = state.entryId;
 
@@ -175,6 +186,16 @@ ShellRoot {
         }
 
         shellSettingsHint: "Open Noctalia Settings → Wallpaper,\nand select a wallpaper directory."
+
+        // Palette colours (fallbacks are Carousel's defaults). Text drawn straight
+        // on the scrim keeps its light defaults: the scrim stays dark in light mode.
+        // No font/radius tokens: the v5 runtime API exposes neither.
+        scrimColor: root.themeColor("scrim", "CC", "#CC000000")
+        searchBackgroundColor: root.themeColor("surface", "F2", "#BB000000")
+        searchTextColor: root.themeColor("onSurface", "FF", "white")
+        searchPlaceholderColor: root.themeColor("onSurfaceVariant", "FF", "#55FFFFFF")
+        searchBorderColor: root.themeColor("onSurfaceVariant", "66", "#44FFFFFF")
+        searchFocusBorderColor: root.themeColor("primary", "FF", "#AAFFFFFF")
 
         onWallpaperPicked: (fullPath, screenName) => {
             root.notifyService("picked", {

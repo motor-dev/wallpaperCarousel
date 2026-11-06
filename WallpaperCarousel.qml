@@ -36,6 +36,20 @@ PluginComponent {
 
         shellSettingsHint: "Open DankMaterialShell Settings → Wallpaper,\nenable DMS wallpaper management and select a wallpaper."
 
+        scrimColor: Theme.withAlpha(Theme.scrimColor, 0.8)
+        searchBackgroundColor: Theme.surfaceContainerHigh
+        searchTextColor: Theme.surfaceText
+        searchPlaceholderColor: Theme.surfaceVariantText
+        searchBorderColor: Theme.outlineMedium
+        searchFocusBorderColor: Theme.primary
+        fontFamily: Theme.fontFamily
+        fontSizeSmall: Theme.fontSizeSmall
+        fontSizeMedium: Theme.fontSizeMedium
+        fontSizeLarge: Theme.fontSizeLarge
+        fontSizeTitle: Theme.fontSizeXLarge
+        uiRadius: Theme.cornerRadius
+        uiSpacing: Theme.spacingM
+
         onWallpaperPicked: (fullPath, screenName) => {
             if (SessionData.perMonitorWallpaper && screenName)
                 SessionData.setMonitorWallpaper(screenName, fullPath);

@@ -36,6 +36,26 @@ Item {
     // the overlay window.
     readonly property bool overlayVisible: overlay.visible
 
+    // ── Style ─────────────────────────────────────────────────────────────────
+    property color scrimColor: "#CC000000"          // further scaled by the overlayOpacity setting
+    // Text drawn straight on the scrim, which is dark in both light and dark themes.
+    property color onScrimTextColor: "white"
+    property color onScrimSecondaryTextColor: "#BBBBBB"
+    property color onScrimTertiaryTextColor: "#888888"
+    // Search field (has its own background, so it can follow the shell theme fully).
+    property color searchBackgroundColor: "#BB000000"
+    property color searchTextColor: "white"
+    property color searchPlaceholderColor: "#55FFFFFF"
+    property color searchBorderColor: "#44FFFFFF"
+    property color searchFocusBorderColor: "#AAFFFFFF"
+    property string fontFamily: Qt.application.font.family
+    property real fontSizeSmall: 12
+    property real fontSizeMedium: 14
+    property real fontSizeLarge: 15
+    property real fontSizeTitle: 24
+    property real uiRadius: 8
+    property real uiSpacing: 12
+
     // ── Derived settings with defaults ────────────────────────────────────────
     readonly property string wallpaperFolder: {
         const ov = (cfg.wallpaperDirectory ?? "").trim();
@@ -326,7 +346,7 @@ Item {
 
         Rectangle {
             anchors.fill: parent
-            color: "#CC000000"
+            color: root.scrimColor
             opacity: overlay.visible ? carousel.overlayOpacity / 100 : 0
             Behavior on opacity {
                 NumberAnimation {
@@ -787,9 +807,9 @@ Item {
                 id: searchBox
                 width: 360
                 height: 40
-                radius: 8
-                color: "#BB000000"
-                border.color: searchInput.activeFocus ? "#AAFFFFFF" : "#44FFFFFF"
+                radius: root.uiRadius
+                color: root.searchBackgroundColor
+                border.color: searchInput.activeFocus ? root.searchFocusBorderColor : root.searchBorderColor
                 border.width: 1
 
                 Behavior on border.color {
@@ -800,23 +820,25 @@ Item {
 
                 Text {
                     anchors.fill: parent
-                    anchors.leftMargin: 12
-                    anchors.rightMargin: 12
+                    anchors.leftMargin: root.uiSpacing
+                    anchors.rightMargin: root.uiSpacing
                     verticalAlignment: Text.AlignVCenter
                     text: "Search wallpapers..."
-                    color: "#55FFFFFF"
-                    font.pixelSize: 15
+                    color: root.searchPlaceholderColor
+                    font.family: root.fontFamily
+                    font.pixelSize: root.fontSizeLarge
                     visible: searchInput.text.length === 0
                 }
 
                 TextInput {
                     id: searchInput
                     anchors.fill: parent
-                    anchors.leftMargin: 12
-                    anchors.rightMargin: 12
+                    anchors.leftMargin: root.uiSpacing
+                    anchors.rightMargin: root.uiSpacing
                     verticalAlignment: TextInput.AlignVCenter
-                    color: "white"
-                    font.pixelSize: 15
+                    color: root.searchTextColor
+                    font.family: root.fontFamily
+                    font.pixelSize: root.fontSizeLarge
                     clip: true
 
                     onTextChanged: {
@@ -853,58 +875,64 @@ Item {
         // ── Invalid override directory ─────────────────────────────────────────
         Column {
             anchors.centerIn: parent
-            spacing: 12
+            spacing: root.uiSpacing
             visible: overlay.visible && (root.cfg.wallpaperDirectory ?? "").trim() && folderModel.status !== FolderListModel.Ready
 
             Text {
                 anchors.horizontalCenter: parent.horizontalCenter
                 text: "Directory not found"
-                font.pixelSize: 24
+                font.family: root.fontFamily
+                font.pixelSize: root.fontSizeTitle
                 font.bold: true
-                color: "white"
+                color: root.onScrimTextColor
             }
             Text {
                 anchors.horizontalCenter: parent.horizontalCenter
                 text: "The configured directory '" + (root.cfg.wallpaperDirectory ?? "") + "' does not exist.\nCheck the path in Wallpaper Carousel settings."
-                font.pixelSize: 14
-                color: "#BBBBBB"
+                font.family: root.fontFamily
+                font.pixelSize: root.fontSizeMedium
+                color: root.onScrimSecondaryTextColor
                 horizontalAlignment: Text.AlignHCenter
                 lineHeight: 1.4
             }
             Text {
                 anchors.horizontalCenter: parent.horizontalCenter
                 text: "Press Escape to close"
-                font.pixelSize: 12
-                color: "#888888"
+                font.family: root.fontFamily
+                font.pixelSize: root.fontSizeSmall
+                color: root.onScrimTertiaryTextColor
             }
         }
 
         // ── Empty folder ──────────────────────────────────────────────────────
         Column {
             anchors.centerIn: parent
-            spacing: 12
+            spacing: root.uiSpacing
             visible: overlay.visible && folderModel.status === FolderListModel.Ready && folderModel.count === 0
 
             Text {
                 anchors.horizontalCenter: parent.horizontalCenter
                 text: root.hasWallpaperConfigured ? "No images found in wallpaper folder" : "No wallpaper configured"
-                font.pixelSize: 24
+                font.family: root.fontFamily
+                font.pixelSize: root.fontSizeTitle
                 font.bold: true
-                color: "white"
+                color: root.onScrimTextColor
             }
             Text {
                 anchors.horizontalCenter: parent.horizontalCenter
                 text: root.hasWallpaperConfigured ? "The folder '" + root.wallpaperFolder + "' is empty.\nAdd images or choose a different wallpaper directory." : root.shellSettingsHint
-                font.pixelSize: 14
-                color: "#BBBBBB"
+                font.family: root.fontFamily
+                font.pixelSize: root.fontSizeMedium
+                color: root.onScrimSecondaryTextColor
                 horizontalAlignment: Text.AlignHCenter
                 lineHeight: 1.4
             }
             Text {
                 anchors.horizontalCenter: parent.horizontalCenter
                 text: "Press Escape to close"
-                font.pixelSize: 12
-                color: "#888888"
+                font.family: root.fontFamily
+                font.pixelSize: root.fontSizeSmall
+                color: root.onScrimTertiaryTextColor
             }
         }
     }
