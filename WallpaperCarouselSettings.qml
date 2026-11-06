@@ -1,6 +1,6 @@
 import QtQuick
 import qs.Common
-import qs.Widgets
+import qs.DCommon.Widgets
 import qs.Modules.Plugins
 
 // Dank Material Shell setting page
@@ -32,7 +32,7 @@ PluginSettings {
                 color: Theme.surfaceText
                 width: parent.width - 24 - Theme.spacingS 
             }
-            DankIcon {
+            DIcon {
                 name: "restart_alt"; size: 20
                 opacity: String(sliderRoot.val) !== String(defaultVal) ? 0.8 : 0.0
                 visible: opacity > 0
@@ -52,7 +52,7 @@ PluginSettings {
             wrapMode: Text.WordWrap
             opacity: 0.8 
         }
-        DankSlider { 
+        DSlider { 
             width: parent.width
             minimum: sliderRoot.min
             maximum: sliderRoot.max
