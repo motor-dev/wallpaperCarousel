@@ -1,9 +1,9 @@
 id = "yngwe/wallpaperCarousel"
 name = "Wallpaper Carousel"
-version = "0.8.4"
+version = "0.9.0"
 plugin_api = 17
 author = "yngwe"
-license = "BSD-3-Clause"
+license = "MIT"
 description = "Browse and pick wallpapers with a fullscreen skewed carousel overlay"
 icon = "carousel-horizontal"
 tags = [ "Wallpaper", "Theming" ]

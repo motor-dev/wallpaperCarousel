@@ -9,7 +9,7 @@ A [DankMaterialShell](https://danklinux.com/) and [Noctalia](https://noctalia.de
 
 ## About
 
-Wallpaper Carousel scans your current wallpaper directory and displays all images in an animated 3D-skewed carousel. Navigate with keyboard or mouse, press Enter to apply. Thumbnails are pre-cached in memory at boot for instant opening.
+Wallpaper Carousel scans your current wallpaper directory and displays all images in an animated 3D-skewed carousel. Navigate with keyboard or mouse, press Enter to apply. Thumbnails around the current wallpaper are pre-cached in memory for instant opening; the **Cache Size** setting controls how many.
 
 This plugin integrates with all shell features — selecting a wallpaper updates the shell wallpaper, color scheme, and wallpaper animations configured in the shell.
 
@@ -32,12 +32,12 @@ The plugin can be installed from the plugin browser in DankMaterialShell.
 
 ### Manual install
 
-**DankMaterialShell**
+**DankMaterialShell** (requires DMS 2.0 or newer)
 
 1. Download the latest archive from the [Releases](../../releases) page
 2. Extract it into your DMS plugins directory:
    ```sh
-   tar xf wallpaperCarousel-*.tar.gz -C "${XDG_CONFIG_HOME:-$HOME/.config}/DankMaterialShell/plugins/"
+   tar xf wallpaperCarousel-*.tar.gz -C "${XDG_CONFIG_HOME:-$HOME/.config}/dms/plugins/"
    ```
 3. Open DankMaterialShell Settings → Plugins and enable **Wallpaper Carousel**
 
@@ -66,13 +66,13 @@ pay that cost at login and have the first open be instant.
 
 Control the carousel via DMS IPC:
 
-| Command                                   | Description                                       |
-| ----------------------------------------- | ------------------------------------------------- |
-| `dms ipc wallpaperCarousel toggle`        | Open or close the overlay                         |
-| `dms ipc wallpaperCarousel open`          | Open the overlay                                  |
-| `dms ipc wallpaperCarousel close`         | Close the overlay                                 |
-| `dms ipc wallpaperCarousel cycleNext`     | Open (if closed) and highlight next wallpaper     |
-| `dms ipc wallpaperCarousel cyclePrevious` | Open (if closed) and highlight previous wallpaper |
+| Command                                        | Description                                       |
+| ---------------------------------------------- | ------------------------------------------------- |
+| `dms ipc call wallpaperCarousel toggle`        | Open or close the overlay                         |
+| `dms ipc call wallpaperCarousel open`          | Open the overlay                                  |
+| `dms ipc call wallpaperCarousel close`         | Close the overlay                                 |
+| `dms ipc call wallpaperCarousel cycleNext`     | Open (if closed) and highlight next wallpaper     |
+| `dms ipc call wallpaperCarousel cyclePrevious` | Open (if closed) and highlight previous wallpaper |
 
 ### Noctalia v4
 
@@ -99,12 +99,20 @@ focused output is used.
 | `noctalia msg plugin yngwe/wallpaperCarousel:service all close`  | Close the overlay                                 |
 | `noctalia msg plugin yngwe/wallpaperCarousel:service all next`   | Open (if closed) and highlight next wallpaper     |
 | `noctalia msg plugin yngwe/wallpaperCarousel:service all prev`   | Open (if closed) and highlight previous wallpaper |
+| `noctalia msg plugin yngwe/wallpaperCarousel:service all quit`   | Shut the overlay process down                     |
 
 `cycleNext` and `cyclePrevious` are accepted as aliases for `next` and `prev`, so
 keybindings carried over from the DMS/v4 builds keep working unchanged.
-| `noctalia msg plugin yngwe/wallpaperCarousel:service all quit` | Shut the overlay process down |
 
-**Keyboard shortcuts** (when open): `←` / `→` to navigate, `Enter` to apply, `Escape` to close.
+**Keyboard shortcuts** (when open):
+
+| Key                 | Action                                           |
+| ------------------- | ------------------------------------------------ |
+| `←` / `→`, `H` / `L` | Previous / next wallpaper                        |
+| `Home` / `End`      | First / last wallpaper (Standard and Wrap modes) |
+| `Ctrl+F`            | Search by file name                              |
+| `Enter`             | Apply the highlighted wallpaper                  |
+| `Escape`            | Close (in search: clear the text, then leave search) |
 
 ## Example Compositor Keybindings
 
@@ -112,14 +120,20 @@ keybindings carried over from the DMS/v4 builds keep working unchanged.
 
 In `~/.config/niri/config.kdl`:
 
-```kdl
-binds {
-    // DankMaterialShell
-    Mod+W { spawn "dms" "ipc" "wallpaperCarousel" "toggle"; }
-    Mod+Shift+Right { spawn "dms" "ipc" "wallpaperCarousel" "cycleNext"; }
-    Mod+Shift+Left { spawn "dms" "ipc" "wallpaperCarousel" "cyclePrevious"; }
+Use the block for your shell (Niri rejects the same key bound twice):
 
-    // Noctalia v5
+```kdl
+// DankMaterialShell
+binds {
+    Mod+W { spawn "dms" "ipc" "call" "wallpaperCarousel" "toggle"; }
+    Mod+Shift+Right { spawn "dms" "ipc" "call" "wallpaperCarousel" "cycleNext"; }
+    Mod+Shift+Left { spawn "dms" "ipc" "call" "wallpaperCarousel" "cyclePrevious"; }
+}
+```
+
+```kdl
+// Noctalia v5
+binds {
     Mod+W { spawn "noctalia" "msg" "plugin" "yngwe/wallpaperCarousel:service" "all" "toggle"; }
     Mod+Shift+Right { spawn "noctalia" "msg" "plugin" "yngwe/wallpaperCarousel:service" "all" "next"; }
     Mod+Shift+Left { spawn "noctalia" "msg" "plugin" "yngwe/wallpaperCarousel:service" "all" "prev"; }
@@ -130,14 +144,20 @@ binds {
 
 In `~/.config/hypr/hyprland.conf`:
 
+Use the lines for your shell:
+
 ```ini
 # DankMaterialShell
-bind = SUPER, W, exec, dms ipc wallpaperCarousel toggle
-bind = SUPER SHIFT, Right, exec, dms ipc wallpaperCarousel cycleNext
-bind = SUPER SHIFT, Left, exec, dms ipc wallpaperCarousel cyclePrevious
+bind = SUPER, W, exec, dms ipc call wallpaperCarousel toggle
+bind = SUPER SHIFT, Right, exec, dms ipc call wallpaperCarousel cycleNext
+bind = SUPER SHIFT, Left, exec, dms ipc call wallpaperCarousel cyclePrevious
 
 # Noctalia v5
 bind = SUPER, W, exec, noctalia msg plugin yngwe/wallpaperCarousel:service all toggle
 bind = SUPER SHIFT, Right, exec, noctalia msg plugin yngwe/wallpaperCarousel:service all next
 bind = SUPER SHIFT, Left, exec, noctalia msg plugin yngwe/wallpaperCarousel:service all prev
 ```
+
+## License
+
+[MIT](LICENSE)
